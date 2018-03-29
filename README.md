@@ -23,6 +23,12 @@ On first usage or if the module can't connect to the local WiFi-network it start
 * For the connection to the clock we only need one addtional part, a [3.5mm Stereo-plug](https://www.aliexpress.com/item/H143-3-5-pairs-of-3-5-channel-stereo-audio-plug-plug/32691597552.html) with cable like from old headphones.
 
 The serial signal comes from Pin TXD1 (GPIO2, D4) of the NodeMCU with 9600 baud. Connect the audioplug to 5V, GND and Signal as described in the assembly instructions of the clock and configure the timereceiver of the clock for GPS-Format and 9600 Baud.
+
+For a case there is a [minimalistic type](https://www.thingiverse.com/thing:2842012) sufficient:
+
+
+![FakeGPS Case](pictures/FakeGPS_Case.jpg)
+
  
 ## Software
 Because the NodeMCU is Arduino-compatible it can be programmed with any IDE for Arduino. Beside the Code-file propagated here there are some Standard-Arduino-libraries an some special libraries necessary and must be imported and activated how described in the used IDE.
