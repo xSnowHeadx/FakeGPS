@@ -78,7 +78,7 @@ void loop()
 			{
 				digitalWrite(BUILTIN_LED, HIGH);		// blink for sync
 				sprintf(tstr, "$GPRMC,%02d%02d%02d,A,0000.0000,N,00000.0000,E,0.0,0.0,%02d%02d%02d,0.0,E,S",
-						hour(loctime), minute(loctime), second(loctime), day(loctime), month(loctime), year(loctime));
+						hour(loctime), minute(loctime), second(loctime), day(loctime), month(loctime), year(loctime) - 2000);
 				cs = 0;
 				for (i = 1; i < strlen(tstr); i++)		// calculate checksum
 					cs ^= tstr[i];
