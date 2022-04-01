@@ -11,26 +11,18 @@ extern "C"
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager
-#include <NTPClient.h>			  // https://github.com/arduino-libraries/NTPClient
-#include <Timezone.h>    		  // https://github.com/JChristensen/Timezone
+#include "WTAClient.h"			  // https://github.com/arduino-libraries/NTPClient
 
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP);
+WTAClient wtaClient;
 WiFiManager wifiManager;
+time_t locEpoch = 0, netEpoch = 0;
 
 int firstrun = 1;
 
-// configure your timezone rules here how described on https://github.com/JChristensen/Timezone
-TimeChangeRule myDST =
-{ "CEST", Last, Sun, Mar, 2, +120 };    //Daylight time = UTC + 2 hours
-TimeChangeRule mySTD =
-{ "CET", Last, Sun, Oct, 2, +60 };      //Standard time = UTC + 1 hours
-Timezone myTZ(myDST, mySTD);
-
 void setup()
 {
-	pinMode(BUILTIN_LED, OUTPUT);   // Initialize the BUILTIN_LED pin as an output
-	digitalWrite(BUILTIN_LED, HIGH);
+	pinMode(LED_BUILTIN, OUTPUT);   // Initialize the LED_BUILTIN pin as an output
+	digitalWrite(LED_BUILTIN, HIGH);
 	Serial.begin(115200);
 
 	wifiManager.setTimeout(180);
@@ -54,7 +46,8 @@ void setup()
 
 	Serial1.begin(9600);
 
-	timeClient.update();
+	wtaClient.Setup();
+	askFrequency = 50;
 }
 
 void loop()
@@ -62,23 +55,27 @@ void loop()
 	char tstr[128];
 	unsigned char cs;
 	unsigned int i;
-	time_t rawtime, loctime;
+	struct tm *tmtime;
 	unsigned long amicros, umicros = 0;
 
 	for (;;)
 	{
 		amicros = micros();
-		if (timeClient.update())						// NTP-update
+		askFrequency = 60 * 60 * 1000;
+		while (((netEpoch = wtaClient.GetCurrentTime()) == locEpoch) || (!netEpoch))
+		{
+			delay(100);
+		}
+		if (netEpoch)
 		{
 			umicros = amicros;
-			rawtime = timeClient.getEpochTime();		// get NTP-time
-			loctime = myTZ.toLocal(rawtime);			// calc local time
+			tmtime = localtime(&netEpoch);
 
-			if ((!second(loctime)) || firstrun)			// full minute or first cycle
+			if ((!tmtime->tm_sec) || firstrun)			// full minute or first cycle
 			{
-				digitalWrite(BUILTIN_LED, HIGH);		// blink for sync
+				digitalWrite(LED_BUILTIN, HIGH);		// blink for sync
 				sprintf(tstr, "$GPRMC,%02d%02d%02d,A,0000.0000,N,00000.0000,E,0.0,0.0,%02d%02d%02d,0.0,E,S",
-						hour(loctime), minute(loctime), second(loctime), day(loctime), month(loctime), year(loctime) - 2000);
+					tmtime->tm_hour, tmtime->tm_min, tmtime->tm_sec, tmtime->tm_mday, tmtime->tm_mon + 1, tmtime->tm_year);
 				cs = 0;
 				for (i = 1; i < strlen(tstr); i++)		// calculate checksum
 					cs ^= tstr[i];
@@ -86,14 +83,14 @@ void loop()
 				Serial.println(tstr);					// send to console
 				Serial1.println(tstr);					// send to clock
 				delay(100);
-				digitalWrite(BUILTIN_LED, LOW);
-				delay(58000 - ((micros() - amicros) / 1000) - (second(loctime) * 1000)); // wait for end of minute
+				digitalWrite(LED_BUILTIN, LOW);
+				delay(58000 - ((micros() - amicros) / 1000) - (tmtime->tm_sec * 1000)); // wait for end of minute
 				firstrun = 0;
 			}
 		}
 		delay(200);
 		if (((amicros - umicros) / 1000000L) > 3600)	// if no sync for more than one hour
-			digitalWrite(BUILTIN_LED, HIGH);			// switch off LED
+			digitalWrite(LED_BUILTIN, HIGH);			// switch off LED
 	}
 }
 
