@@ -1,8 +1,8 @@
 # FakeGPS
-# ESP8266-NTP-timeserver for Nixie-clocks from PV Electronics
+# ESP8266-timeserver for Nixie-clocks from PV Electronics
 https://github.com/xSnowHeadx/FakeGPS  
 README file  
-SnowHead Mar 2018  
+SnowHead Mar 2022  
 
 ## Introduction
 The company [PV Electronics](https://www.pvelectronics.co.uk) from UK sells nice Nixie-clocks:
