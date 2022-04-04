@@ -84,7 +84,10 @@ void loop()
 				Serial1.println(tstr);					// send to clock
 				delay(100);
 				digitalWrite(LED_BUILTIN, LOW);
-				delay(58000 - ((micros() - amicros) / 1000) - (tmtime->tm_sec * 1000)); // wait for end of minute
+				if(tmtime->tm_sec < 57)
+				{
+					delay(58000 - ((micros() - amicros) / 1000) - (tmtime->tm_sec * 1000)); // wait for end of minute
+				}
 				firstrun = 0;
 			}
 		}

@@ -191,7 +191,7 @@ unsigned long WTAClient::ReadCurrentEpoch()
 #if (DEBUG)
 			Serial.print("Unix time = ");
 #endif
-			lastEpoch = unixtime + raw_offset + dst_offset + 1;
+			lastEpoch = unixtime + raw_offset + dst_offset;
 			lastEpochTimeStamp = nextEpochTimeStamp;
 #if (DEBUG)
 			Serial.println(lastEpoch);
