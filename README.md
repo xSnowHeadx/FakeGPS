@@ -16,7 +16,7 @@ So there normally are no firmware-modifications necessary to adapt the timezone 
 
 This converter generates a timestamp in local time considering the DST-state. So the clock can be set on a UTC-difference of 0 and don't need any configuration or switching for DST on the clock.
 
-On first usage or if the module can't connect to the local WiFi-network it starts as accesspoint named "FakeGPS" with password "FakeGPS". Connect to this AP and configure the SSID and Key of your local network as described [here](https://github.com/tzapu/WiFiManager). Then the module will connect to your network, act as NTP-server and keep the access-data for the next start.
+On first usage or if the module can't connect to the local WiFi-network it starts as accesspoint named "FakeGPS" with password "FakeGPS". Connect to this AP and configure the SSID and Key of your local network as described [here](https://github.com/tzapu/WiFiManager). Then the module will connect to your network, act as GPS-Time-Server and keep the access-data for the next start.
 ## Hardware
 * Like the original we use a [ESP8266 NodeMCU](https://www.aliexpress.com/item/1PCS-ESP8266-NodeMCU-V3-Lua-WIFI-module-memory-32M-Flash-USB-serial-CH340G/32820380705.html). 
 * For the connection to the clock we only need one addtional part, a [3.5mm Stereo-plug](https://www.aliexpress.com/item/H143-3-5-pairs-of-3-5-channel-stereo-audio-plug-plug/32691597552.html) with cable like from old headphones.
