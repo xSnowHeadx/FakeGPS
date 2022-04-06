@@ -11,7 +11,7 @@ The company [PV Electronics](https://www.pvelectronics.co.uk) from UK sells nice
 
 Unfortunately these clocks have only a crystal for time accuracy and no DST-automatic. To get the exact time you can buy a [NTP-client](https://www.pvelectronics.co.uk/index.php?main_page=product_info&cPath=10&products_id=188) from the same company for $40 or you make one by yourself for $2 and with better features. 
 ## Function
-The FakeGPS requests the UTC-Time from the [WorldTime-API](worldtimeapi.org) over WiFi and Internet and generates a GPRMC-Message in the GPS-Format NMEA-0183 as required from the Clock.
+The FakeGPS requests the UTC-Time from the [WorldTime-API](http://worldtimeapi.org) over WiFi and Internet and generates a GPRMC-Message in the GPS-Format NMEA-0183 as required from the Clock.
 So there normally are no firmware-modifications necessary to adapt the timezone and DST because they will be investigated out of the public IP of the request. For special cases (f.e. the use of a foreign proxy server) the timezone can be selected manually by replacing "ip" with the wished [timezone](http://worldtimeapi.org/timezone) in WTAClient.cpp. 
 
 This converter generates a timestamp in local time considering the DST-state. So the clock can be set on a UTC-difference of 0 and don't need any configuration or switching for DST on the clock.
