@@ -6,8 +6,8 @@
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 
-char wifiManagerAPName[] = "FakeGPS";
-char wifiManagerAPPassword[] = "FakeGPS";
+char wifiManagerAPName[] = "FakeGPS-AP";
+char wifiManagerAPPassword[] = "";
 
 //== DOUBLE-RESET DETECTOR ==
 #include <DoubleResetDetector.h>
@@ -69,22 +69,22 @@ void WTAClient::Setup(void)
 		//-- Double-Reset --
 		if (drd.detectDoubleReset())
 		{
-			Serial.println("DOUBLE Reset Detected");
-			digitalWrite(LED_BUILTIN, LOW);
-			WiFi.disconnect();
-			connectionStatus = wifiManager.startConfigPortal(wifiManagerAPName, wifiManagerAPPassword);
-			Serial.print("startConfigPortal returned ");
-			Serial.println(connectionStatus);
-		}
-		else
-		{
-			Serial.println("SINGLE reset Detected");
+			Serial.println("DOUBLE reset Detected");
 			digitalWrite(LED_BUILTIN, HIGH);
 			//fetches ssid and pass from eeprom and tries to connect
 			//if it does not connect it starts an access point with the specified name wifiManagerAPName
 			//and goes into a blocking loop awaiting configuration
 			connectionStatus = wifiManager.autoConnect(); //wifiManagerAPName, wifiManagerAPPassword);
 			Serial.print("autoConnect returned ");
+			Serial.println(connectionStatus);
+		}
+		else
+		{
+			Serial.println("SINGLE Reset Detected");
+			digitalWrite(LED_BUILTIN, LOW);
+			WiFi.disconnect();
+			connectionStatus = wifiManager.startConfigPortal(wifiManagerAPName, wifiManagerAPPassword);
+			Serial.print("startConfigPortal returned ");
 			Serial.println(connectionStatus);
 		}
 	}
