@@ -34,4 +34,5 @@ Because the NodeMCU is Arduino-compatible it can be programmed with any IDE for 
 	* ESP8266WebServer
 	* ESP8266WiFi
 * [WiFiManager](https://github.com/tzapu/WiFiManager)
+* [ArduinoJson](https://www.arduinolibraries.info/libraries/arduino-json)
 
