@@ -1,3 +1,4 @@
+
 extern "C"
 {
 #include "user_interface.h"  	  // Required for wifi_station_connect() to work
@@ -11,9 +12,9 @@ extern "C"
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>          // https://github.com/tzapu/WiFiManager
-#include "WTAClient.h"			  // https://github.com/arduino-libraries/NTPClient
+#include "TimeClient.h"			  // https://github.com/arduino-libraries/NTPClient
 
-WTAClient wtaClient;
+TimeClient TimeClient;
 WiFiManager wifiManager;
 time_t locEpoch = 0, netEpoch = 0;
 
@@ -46,7 +47,7 @@ void setup()
 
 	Serial1.begin(9600);
 
-	wtaClient.Setup();
+	TimeClient.Setup();
 	askFrequency = 50;
 }
 
@@ -62,7 +63,7 @@ void loop()
 	{
 		amicros = micros();
 		askFrequency = 60 * 60 * 1000;
-		while (((netEpoch = wtaClient.GetCurrentTime()) == locEpoch) || (!netEpoch))
+		while (((netEpoch = TimeClient.GetCurrentTime()) == locEpoch) || (!netEpoch))
 		{
 			delay(100);
 		}
@@ -75,7 +76,7 @@ void loop()
 			{
 				digitalWrite(LED_BUILTIN, HIGH);		// blink for sync
 				sprintf(tstr, "$GPRMC,%02d%02d%02d,A,0000.0000,N,00000.0000,E,0.0,0.0,%02d%02d%02d,0.0,E,S",
-					tmtime->tm_hour, tmtime->tm_min, tmtime->tm_sec, tmtime->tm_mday, tmtime->tm_mon + 1, tmtime->tm_year);
+						tmtime->tm_hour, tmtime->tm_min, tmtime->tm_sec, tmtime->tm_mday, tmtime->tm_mon + 1, tmtime->tm_year - 100);
 				cs = 0;
 				for (i = 1; i < strlen(tstr); i++)		// calculate checksum
 					cs ^= tstr[i];
