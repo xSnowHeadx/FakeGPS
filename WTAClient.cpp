@@ -3,6 +3,7 @@
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
+#include <WiFiClient.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 
@@ -17,13 +18,22 @@ DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
 
 //=== WTA CLIENT ===
 #include "WTAClient.h"
-#include "WiFiClient.h"
 
-#define WTAServerName  "http://worldtimeapi.org/api/"
+#define DEBUG 1
+
+// your private API-Keys here
+const char *tz_api_key =	   	"your_timezone_API_key"; 		// see https://www.abstractapi.com/api/time-date-timezone-api
+const char *gl_api_key =		"your_geolocatiion_API_key"; 	// see https://www.abstractapi.com/api/ip-geolocation-api
+
+char fix_tz[32] =				"";								// fill out for a fix local timezone
+const char *default_location =	"Berlin";						// fallback location in case of failed geolocation retrieving
+
+const char *geo_location_api =	"http://ipgeolocation.abstractapi.com/v1/?";
+const char *time_zone_api = 	"http://timezone.abstractapi.com/v1/current_time/?";
+
 HTTPClient http;
 WiFiClient wifiClient;
 String payload;
-bool military = true;
 
 unsigned long askFrequency = 60 * 60 * 1000; // How frequent should we get current time? in miliseconds. 60minutes = 60*60s = 60*60*1000ms
 unsigned long timeToAsk;
@@ -32,11 +42,11 @@ unsigned long lastEpoch; // We don't want to continually ask for epoch from time
 unsigned long lastEpochTimeStamp; // What was millis() when asked server for Epoch we are currently using?
 unsigned long nextEpochTimeStamp; // What was millis() when we asked server for the upcoming epoch
 unsigned long currentTime;
+struct tm local_tm;
 
 //== PREFERENCES == (Fill these appropriately if you could not connect to the ESP via your phone)
 char homeWifiName[] = ""; // PREFERENCE: The name of the home WiFi access point that you normally connect to.
 char homeWifiPassword[] = ""; // PREFERENCE: The password to the home WiFi access point that you normally connect to.
-char timezone[] = "ip"; // PREFERENCE: TimeZone. Go to http://worldtimeapi.org/api/timezone to find your timezone string or chose "ip" to use IP-localisation for timezone detection
 bool error_getTime = false;
 
 WTAClient::WTAClient()
@@ -120,14 +130,65 @@ void WTAClient::Setup(void)
 
 void WTAClient::AskCurrentEpoch()
 {
-	char url[64] = WTAServerName;
+	char request[256];
 	int httpCode;
+	char local_tz[32] = "";
 
-	//if (DEBUG) Serial.println("AskCurrentEpoch called");
-	Serial.println("AskCurrentEpoch called");
+	if(!strlen(fix_tz))
+	{
+		DynamicJsonDocument jsonIPDocument(JSON_OBJECT_SIZE(42) + 1024);
 
-	strcat(url, timezone);
-	http.begin(wifiClient, url);
+		if (DEBUG) Serial.println("Retrieving public IP");
+		sprintf(request, "%sapi_key=%s", geo_location_api, gl_api_key);
+	//	strcpy(request, geo_location_api);
+		if (DEBUG) Serial.println(request);
+		http.begin(wifiClient, request);
+		httpCode = http.GET();
+
+		payload = "";
+		if (httpCode > 0)
+		{
+			payload = http.getString();
+		}
+		http.end();
+
+		if (DEBUG) Serial.println(payload.c_str());
+
+		if(payload.length())
+		{
+			auto error = deserializeJson(jsonIPDocument, payload.c_str());
+			if (error)
+			{
+				if (DEBUG) Serial.println("parseObject() IP failed");
+			}
+			else
+			{
+				const char *ip_got = jsonIPDocument["timezone"]["name"];
+				strcpy(local_tz, ip_got);
+			}
+		}
+	}
+	else
+	{
+		strcpy(local_tz, fix_tz);
+	}
+	if(!strlen(local_tz))
+	{
+		strcpy(local_tz, default_location);
+		if (DEBUG) Serial.print("no TZ retrieved. Use timezone ");
+	}
+	else
+	{
+		if (DEBUG) Serial.print("retrieved TZ: ");
+	}
+
+	if (DEBUG) Serial.println(local_tz);
+
+	sprintf(request, "%sapi_key=%s&location=%s", time_zone_api, tz_api_key, local_tz);
+
+//	sprintf(request, "%sapiKey=%s", time_zone_api, api_key);
+	if (DEBUG) Serial.println(request);
+	http.begin(wifiClient, request);
 	httpCode = http.GET();
 
 	payload = "";
@@ -141,61 +202,56 @@ void WTAClient::AskCurrentEpoch()
 unsigned long WTAClient::ReadCurrentEpoch()
 {
 	int cb = payload.length();
+	const char *date_time = NULL;
 
-#if (DEBUG)
-	Serial.println("ReadCurrentEpoch called");
-#endif
+	if (DEBUG) Serial.println("ReadCurrentEpoch called");
 
 	if (!cb)
 	{
 		error_getTime = false;
-#if (DEBUG)
-		Serial.println("no packet yet");
-#endif
+		if (DEBUG) Serial.println("no packet yet");
 	}
 	else
 	{
-		const size_t capacity = JSON_OBJECT_SIZE(15) + 400;
+		const size_t capacity = JSON_OBJECT_SIZE(15) + 200;
 		DynamicJsonDocument jsonDocument(capacity);
 
 		error_getTime = true;
-		Serial.print("time answer received, length=");
-		Serial.println(cb);
+		if (DEBUG) Serial.print("time answer received, length=");
+		if (DEBUG) Serial.println(cb);
 		// We've received a time, read the data from it
 		// the timedate are JSON values
 
 		auto error = deserializeJson(jsonDocument, payload.c_str());
+//		Serial.println(payload.c_str());
 		if (error)
 		{
-			Serial.println("parseObject() failed");
+			if (DEBUG) Serial.println("parseObject() failed");
 		}
 		else
 		{
-			//      int week_number = jsonDocument["week_number"]; // 31
-			//      const char* utc_offset = jsonDocument["utc_offset"]; // "-04:00"
-			//      const char* utc_datetime = jsonDocument["utc_datetime"]; // "2019-08-01T16:58:40.68279+00:00"
-						long unixtime = jsonDocument["unixtime"]; // 1564678720
-			//      const char* timezone = jsonDocument["timezone"]; // "America/New_York"
-						int raw_offset = jsonDocument["raw_offset"]; // -18000
-			//      const char* dst_until = jsonDocument["dst_until"]; // "2019-11-03T06:00:00+00:00"
-						int dst_offset = jsonDocument["dst_offset"]; // 3600
-			//      const char* dst_from = jsonDocument["dst_from"]; // "2019-03-10T07:00:00+00:00"
-			//      bool dst = jsonDocument["dst"]; // true
-			//      int day_of_year = jsonDocument["day_of_year"]; // 213
-			//      int day_of_week = jsonDocument["day_of_week"]; // 4
-			//      const char* datetime = jsonDocument["datetime"]; // "2019-08-01T12:58:40.682790-04:00"
-			//      const char* client_ip = jsonDocument["client_ip"]; // "23.235.227.109"
-			//      const char* abbreviation = jsonDocument["abbreviation"]; // "EDT"
+			date_time = jsonDocument["datetime"];
+		}
+		if(date_time)
+		{
+			int d, m, y, H, M, S;
 
-			// now convert WTA time into everyday time:
-#if (DEBUG)
-			Serial.print("Unix time = ");
-#endif
-			lastEpoch = unixtime + raw_offset + dst_offset + 1;
+			if (DEBUG)
+			{
+				Serial.print("local time = ");
+				Serial.println(date_time);
+				if(sscanf(date_time, "%d-%d-%d %d:%d:%d", &y, &m, &d, &H, &M, &S) == 6)
+				{
+					local_tm.tm_year = y -1900;
+					local_tm.tm_mon = m - 1;
+					local_tm.tm_mday = d;
+					local_tm.tm_hour = H;
+					local_tm.tm_min = M;
+					local_tm.tm_sec = S;
+					lastEpoch = mktime(&local_tm);
+				}
+			}
 			lastEpochTimeStamp = nextEpochTimeStamp;
-#if (DEBUG)
-			Serial.println(lastEpoch);
-#endif
 		}
 		return lastEpoch;
 	}
@@ -208,9 +264,7 @@ unsigned long WTAClient::GetCurrentTime()
 	unsigned long timeNow = millis();
 	if (timeNow > timeToAsk || !error_getTime)
 	{ // Is it time to ask server for current time?
-#if (DEBUG)
-		Serial.println(" Time to ask");
-#endif
+		if (DEBUG) Serial.println(" Time to ask");
 		timeToAsk = timeNow + askFrequency; // Don't ask again for a while
 		if (timeToRead == 0)
 		{ // If we have not asked...
@@ -233,26 +287,13 @@ unsigned long WTAClient::GetCurrentTime()
 		currentTime = lastEpoch + (elapsedMillis / 1000);
 	}
 
-#if (DEBUG)
-	if (digitalRead(0) == LOW)
-		currentTime -= 3600;
-#endif
+	if (DEBUG && digitalRead(0) == LOW) currentTime -= 3600;
 	return currentTime;
 }
 
 byte WTAClient::GetHours()
 {
-	int hours = (currentTime % 86400L) / 3600;
-
-	// Convert to AM/PM if military time option is off
-	if (!military)
-	{
-		if (hours == 0)
-			hours = 12; // Midnight in military time is 0:mm, but we want midnight to be 12:mm
-		if (hours > 12)
-			hours -= 12; // After noon 13:mm should show as 01:mm, etc...
-	}
-	return hours;
+	return (currentTime % 86400L) / 3600;
 }
 
 byte WTAClient::GetMinutes()
